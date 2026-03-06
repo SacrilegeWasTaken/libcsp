@@ -2,3 +2,4 @@ a.out
 test/test
 .DS_Store
 !test/test.c
+result/
