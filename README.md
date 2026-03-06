@@ -1,6 +1,6 @@
 # libcps – smart pointers for C
 
-Single-header C library that adds **RAII-style smart pointers** using the `cleanup` attribute (Clang/GCC). Requires C11 and `<stdatomic.h>`.
+Single-header C library that adds **RAII-style smart pointers** using the `cleanup` attribute (Clang/GCC). Requires **C11 or C23** and `<stdatomic.h>`. With C23, `CSP_NULL` is `nullptr`; with C11, it is `NULL`. `[[nodiscard]]`-style warnings use `warn_unused_result` on Clang/GCC for both standards.
 
 ## Types
 
@@ -19,8 +19,8 @@ All owning types use the `cleanup` attribute so destructors run when the variabl
 
 ## Requirements
 
-- **Compiler**: Clang or GCC, C11 or later.
-- **Headers**: C11 atomics (`<stdatomic.h>`).
+- **Compiler**: Clang or GCC, C11 or C23.
+- **Headers**: C11 atomics (`<stdatomic.h>`). The header defines `CSP_NULL` (nullptr in C23, NULL in C11) and `CSP_NODISCARD` for init/clone.
 
 ---
 
@@ -43,6 +43,7 @@ All owning types use the `cleanup` attribute so destructors run when the variabl
 
 ```bash
 cc -std=c11 -Wall -Wextra -Iinclude -c your.c
+cc -std=c23 -Wall -Wextra -Iinclude -c your.c
 ```
 
 ---
@@ -113,6 +114,7 @@ Manual build:
 
 ```bash
 cc -std=c11 -Wall -Wextra -pthread -Iinclude test/test.c -o test/test
+cc -std=c23 -Wall -Wextra -pthread -Iinclude test/test.c -o test/test
 ./test/test
 ```
 

@@ -18,7 +18,7 @@
 
 static void test_unique_basic(void) {
   int *data = (int *)malloc(sizeof(int));
-  assert(data != NULL);
+  assert(data != CSP_NULL);
   *data = 42;
 
   CSPUnique u = cspunique_init(data, sizeof(int));
@@ -26,7 +26,7 @@ static void test_unique_basic(void) {
   assert(u.size == sizeof(int));
 
   CSPUnique u2 = cspunique_clone(&u);
-  assert(u2.raw != NULL);
+  assert(u2.raw != CSP_NULL);
   assert(u2.raw != u.raw);
   assert(u2.size == u.size);
   assert(*(int *)u2.raw == 42);
@@ -36,14 +36,14 @@ static void test_unique_basic(void) {
 }
 
 static void test_unique_clone_null_empty(void) {
-  I_CSPUnique empty = { .raw = NULL, .size = 0 };
+  I_CSPUnique empty = { .raw = CSP_NULL, .size = 0 };
   I_CSPUnique c = cspunique_clone(&empty);
-  assert(c.raw == NULL);
+  assert(c.raw == CSP_NULL);
   assert(c.size == 0);
 
-  I_CSPUnique with_size = { .raw = NULL, .size = 8 };
+  I_CSPUnique with_size = { .raw = CSP_NULL, .size = 8 };
   c = cspunique_clone(&with_size);
-  assert(c.raw == NULL);
+  assert(c.raw == CSP_NULL);
   assert(c.size == 0);
 }
 
@@ -69,7 +69,7 @@ static void test_rc_basic_refcount(void) {
 
   CSPRc a = csprc_init(data);
   assert(a.raw == data);
-  assert(a.cnt != NULL);
+  assert(a.cnt != CSP_NULL);
   assert(*a.cnt == 1);
 
   {
@@ -105,7 +105,7 @@ static void test_arc_basic_refcount(void) {
 
   CSPArc a = csparc_init(data);
   assert(a.raw == data);
-  assert(a.cnt != NULL);
+  assert(a.cnt != CSP_NULL);
   assert(atomic_load(a.cnt) == 1);
 
   {
@@ -138,7 +138,7 @@ static void *arc_thread_fn(void *arg) {
     _Atomic int *p = (_Atomic int *)local.raw;
     atomic_fetch_add(p, 1);
   }
-  return NULL;
+  return CSP_NULL;
 }
 
 static void test_arc_multithreaded(void) {
@@ -156,14 +156,14 @@ static void test_arc_multithreaded(void) {
     args[i].shared_arc = &shared;
     args[i].id = i;
     args[i].err = 0;
-    int r = pthread_create(&threads[i], NULL, arc_thread_fn, &args[i]);
+    int r = pthread_create(&threads[i], CSP_NULL, arc_thread_fn, &args[i]);
     assert(r == 0);
   }
 
   for (int i = 0; i < ARC_MT_THREADS; i++) {
-    void *res = NULL;
+    void *res = CSP_NULL;
     pthread_join(threads[i], &res);
-    assert(res == NULL);
+    assert(res == CSP_NULL);
     assert(args[i].err == 0);
   }
 
@@ -189,7 +189,7 @@ static void test_cow_basic(void) {
   assert(*c.cnt == 2);
 
   int *p = (int *)cspcow_get_mut(&c);
-  assert(p != NULL);
+  assert(p != CSP_NULL);
   assert(p != data);
   assert(*p == 100);
   *p = 200;
@@ -214,9 +214,9 @@ static void test_cow_get_mut_sole_owner(void) {
 }
 
 static void test_cow_get_null(void) {
-  I_CSPCow empty = { .raw = NULL, .size = 0, .cnt = NULL };
-  assert(cspcow_get(&empty) == NULL);
-  assert(cspcow_get_mut(&empty) == NULL);
+  I_CSPCow empty = { .raw = CSP_NULL, .size = 0, .cnt = CSP_NULL };
+  assert(cspcow_get(&empty) == CSP_NULL);
+  assert(cspcow_get_mut(&empty) == CSP_NULL);
 }
 
 static void test_cow_clone_chain(void) {

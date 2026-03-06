@@ -1,10 +1,13 @@
 CC     = cc
-CFLAGS = -std=c11 -Wall -Wextra -pthread -Iinclude
+CFLAGS11 = -std=c11 -Wall -Wextra -pthread -Iinclude
+CFLAGS23 = -std=c23 -Wall -Wextra -pthread -Iinclude
 
-test: test/test.c include/csp.h
-	$(CC) $(CFLAGS) test/test.c -o test/test
+build-test: test/test.c include/csp.h
+	$(CC) $(CFLAGS11) test/test.c -o test/test11
+	$(CC) $(CFLAGS23) test/test.c -o test/test23
 
-run-test: test
-	./test/test
+test: build-test
+	./test/test11
+	./test/test23
 
-.PHONY: test run-test
+.PHONY: build-test test

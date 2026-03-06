@@ -36,13 +36,12 @@
 
     checks = eachSystem (system: let
       pkgs = mkPkgs system;
-    in {
-      test = pkgs.stdenv.mkDerivation {
-        name = "libcps-test";
+      mkTest = std: pkgs.stdenv.mkDerivation {
+        name = "libcps-test-${std}";
         src = self;
         buildInputs = [ pkgs.stdenv.cc ];
         buildPhase = ''
-          cc -std=c11 -Wall -Wextra -pthread -Iinclude \
+          cc -std=${std} -Wall -Wextra -pthread -Iinclude \
              -DCSP_IMPLEMENTATION -DCSP_DEBUG -DCSP_PANIC \
              test/test.c -o test_runner
         '';
@@ -50,6 +49,9 @@
         checkPhase = "./test_runner";
         installPhase = "mkdir -p $out";
       };
+    in {
+      test-c11 = mkTest "c11";
+      test-c23 = mkTest "c23";
     });
   };
 }

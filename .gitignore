@@ -1,5 +1,6 @@
 a.out
-test/test
+test/test11
+test/test23
 .DS_Store
 !test/test.c
 result/

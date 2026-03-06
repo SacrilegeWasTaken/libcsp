@@ -1,6 +1,6 @@
 CompileFlags:
   Add:
-    - -std=c11
+    - -std=c23
     - -xc
     - -Iinclude
   Remove: []

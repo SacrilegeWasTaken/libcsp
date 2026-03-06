@@ -16,6 +16,17 @@
 #  error "CSP requires C11 atomics (<stdatomic.h>)"
 #endif
 
+/* C11/C23 compatibility */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+#  define CSP_NULL nullptr
+#else
+#  define CSP_NULL NULL
+#endif
+#if (defined(__clang__) || defined(__GNUC__))
+#  define CSP_NODISCARD __attribute__((warn_unused_result))
+#else
+#  define CSP_NODISCARD
+#endif
 
 /* UNIQUE */
 typedef struct {
@@ -25,8 +36,8 @@ typedef struct {
 
 #define CSPUnique CSP_CLEANUP(cspunique_cleanup) I_CSPUnique
 static inline void cspunique_cleanup(I_CSPUnique *ptr);
-static inline I_CSPUnique cspunique_init(void *data, size_t size);
-static inline I_CSPUnique cspunique_clone(I_CSPUnique *ptr);
+CSP_NODISCARD static inline I_CSPUnique cspunique_init(void *data, size_t size);
+CSP_NODISCARD static inline I_CSPUnique cspunique_clone(I_CSPUnique *ptr);
 
 
 /* RC */
@@ -37,8 +48,8 @@ typedef struct {
 
 #define CSPRc CSP_CLEANUP(csprc_cleanup) I_CSPRc
 static inline void csprc_cleanup(I_CSPRc *ptr);
-static inline I_CSPRc csprc_clone(I_CSPRc *ptr);
-static inline I_CSPRc csprc_init(void *data);
+CSP_NODISCARD static inline I_CSPRc csprc_clone(I_CSPRc *ptr);
+CSP_NODISCARD static inline I_CSPRc csprc_init(void *data);
 
 
 /* ARC */
@@ -49,8 +60,8 @@ typedef struct {
 
 #define CSPArc CSP_CLEANUP(csparc_cleanup) I_CSPArc
 static inline void csparc_cleanup(I_CSPArc *ptr);
-static inline I_CSPArc csparc_clone(I_CSPArc *ptr);
-static inline I_CSPArc csparc_init(void *data);
+CSP_NODISCARD static inline I_CSPArc csparc_clone(I_CSPArc *ptr);
+CSP_NODISCARD static inline I_CSPArc csparc_init(void *data);
 
 
 /* COW (copy-on-write): clone = share; first write = copy then write */
@@ -62,10 +73,10 @@ typedef struct {
 
 #define CSPCow CSP_CLEANUP(cspcow_cleanup) I_CSPCow
 static inline void cspcow_cleanup(I_CSPCow *ptr);
-static inline I_CSPCow cspcow_init(void *data, size_t size);
-static inline I_CSPCow cspcow_clone(I_CSPCow *ptr);
+CSP_NODISCARD static inline I_CSPCow cspcow_init(void *data, size_t size);
+CSP_NODISCARD static inline I_CSPCow cspcow_clone(I_CSPCow *ptr);
 static inline const void *cspcow_get(const I_CSPCow *ptr);
-static inline void *cspcow_get_mut(I_CSPCow *ptr);
+CSP_NODISCARD static inline void *cspcow_get_mut(I_CSPCow *ptr);
 
 
 /* WEAKRC */
@@ -73,9 +84,9 @@ typedef struct {
   I_CSPRc *rc;
 } I_CSPWeakRc;
 
-static inline I_CSPWeakRc cspweakrc_init(I_CSPRc *rc);
-static inline void *cspweakrc_try_get(I_CSPWeakRc *ptr);
-static inline I_CSPWeakRc cspweakrc_clone(I_CSPWeakRc *ptr);
+CSP_NODISCARD static inline I_CSPWeakRc cspweakrc_init(I_CSPRc *rc);
+CSP_NODISCARD static inline void *cspweakrc_try_get(I_CSPWeakRc *ptr);
+CSP_NODISCARD static inline I_CSPWeakRc cspweakrc_clone(I_CSPWeakRc *ptr);
 
 
 /* WEAKARC */
@@ -83,9 +94,9 @@ typedef struct {
   I_CSPArc *arc;
 } I_CSPWeakArc;
 
-static inline I_CSPWeakArc cspweakarc_init(I_CSPArc *arc);
-static inline void *cspweakarc_try_get(I_CSPWeakArc *ptr);
-static inline I_CSPWeakArc cspweakarc_clone(I_CSPWeakArc *ptr);
+CSP_NODISCARD static inline I_CSPWeakArc cspweakarc_init(I_CSPArc *arc);
+CSP_NODISCARD static inline void *cspweakarc_try_get(I_CSPWeakArc *ptr);
+CSP_NODISCARD static inline I_CSPWeakArc cspweakarc_clone(I_CSPWeakArc *ptr);
 
 
 /* Generic Ref/Weak: one type, one API, dispatch inside functions */
@@ -102,8 +113,8 @@ typedef struct {
 #define CSPRef CSP_CLEANUP(cspref_cleanup) CSPRefInner
 
 static inline void cspref_cleanup(CSPRefInner *ptr);
-static inline CSPRefInner cspref_init(void *data, int atomic);
-static inline CSPRefInner cspref_clone(const CSPRefInner *ptr);
+CSP_NODISCARD static inline CSPRefInner cspref_init(void *data, int atomic);
+CSP_NODISCARD static inline CSPRefInner cspref_clone(const CSPRefInner *ptr);
 
 typedef struct {
   int tag;
@@ -113,9 +124,9 @@ typedef struct {
   } u;
 } CSPWeak;
 
-static inline CSPWeak cspweak_init(CSPRefInner *ref);
-static inline void *cspweak_try_get(const CSPWeak *ptr);
-static inline CSPWeak cspweak_clone(const CSPWeak *ptr);
+CSP_NODISCARD static inline CSPWeak cspweak_init(CSPRefInner *ref);
+CSP_NODISCARD static inline void *cspweak_try_get(const CSPWeak *ptr);
+CSP_NODISCARD static inline CSPWeak cspweak_clone(const CSPWeak *ptr);
 
 
 /* IMPLEMENTATION */
@@ -132,21 +143,21 @@ static inline CSPWeak cspweak_clone(const CSPWeak *ptr);
 /* WEAKARC IMPLEMENTATION */
 
 
-static inline I_CSPWeakArc cspweakarc_init(I_CSPArc *arc) {
+CSP_NODISCARD static inline I_CSPWeakArc cspweakarc_init(I_CSPArc *arc) {
   return (I_CSPWeakArc) {
     .arc = arc,
   };
 }
 
-static inline I_CSPWeakArc cspweakarc_clone(I_CSPWeakArc *ptr) {
+CSP_NODISCARD static inline I_CSPWeakArc cspweakarc_clone(I_CSPWeakArc *ptr) {
   return (I_CSPWeakArc) {
     .arc = ptr->arc,
   };
 }
 
-static inline void *cspweakarc_try_get(I_CSPWeakArc *ptr) {    
+CSP_NODISCARD static inline void *cspweakarc_try_get(I_CSPWeakArc *ptr) {    
   if (!ptr || !ptr->arc || !ptr->arc->raw) {
-    return NULL;
+    return CSP_NULL;
   }
   return ptr->arc->raw;
 }
@@ -155,23 +166,23 @@ static inline void *cspweakarc_try_get(I_CSPWeakArc *ptr) {
 /* WEAKRC IMPLEMENTATION */
 
 
-static inline I_CSPWeakRc cspweakrc_init(I_CSPRc *rc) {
+CSP_NODISCARD static inline I_CSPWeakRc cspweakrc_init(I_CSPRc *rc) {
   return (I_CSPWeakRc) {
     .rc = rc,
   };
 }
 
 
-static inline I_CSPWeakRc cspweakrc_clone(I_CSPWeakRc *ptr) {
+CSP_NODISCARD static inline I_CSPWeakRc cspweakrc_clone(I_CSPWeakRc *ptr) {
   return (I_CSPWeakRc) {
     .rc = ptr->rc,
   };
 }
 
 
-static inline void *cspweakrc_try_get(I_CSPWeakRc *ptr) {    
+CSP_NODISCARD static inline void *cspweakrc_try_get(I_CSPWeakRc *ptr) {    
   if (!ptr || !ptr->rc || !ptr->rc->raw) {
-    return NULL;
+    return CSP_NULL;
   }
   return ptr->rc->raw;
 }
@@ -186,27 +197,27 @@ static inline void cspunique_cleanup(I_CSPUnique *ptr) {
     printf("CSPUnique cleanup: %p\n, raw: %p\n", ptr, ptr->raw);
 #endif
     free(ptr->raw);
-    ptr->raw = NULL;
+    ptr->raw = CSP_NULL;
   }
 }
 
-static inline I_CSPUnique cspunique_init(void *data, size_t size) {
+CSP_NODISCARD static inline I_CSPUnique cspunique_init(void *data, size_t size) {
   return (I_CSPUnique) {
     .raw  = data,
     .size = size,
   };
 }
 
-static inline I_CSPUnique cspunique_clone(I_CSPUnique *ptr) {
+CSP_NODISCARD static inline I_CSPUnique cspunique_clone(I_CSPUnique *ptr) {
   if (!ptr || !ptr->raw || ptr->size == 0) {
-    return (I_CSPUnique){ .raw = NULL, .size = 0 };
+    return (I_CSPUnique){ .raw = CSP_NULL, .size = 0 };
   }
   void *copy = malloc(ptr->size);
   if (!copy) {
 #ifdef CSP_PANIC
     abort();
 #else
-    return (I_CSPUnique){ .raw = NULL, .size = 0 };
+    return (I_CSPUnique){ .raw = CSP_NULL, .size = 0 };
 #endif
   }
   memcpy(copy, ptr->raw, ptr->size);
@@ -233,11 +244,11 @@ static inline void csprc_cleanup(I_CSPRc *ptr) {
     free(ptr->cnt);
   }
 
-  ptr->raw = NULL;
-  ptr->cnt = NULL;
+  ptr->raw = CSP_NULL;
+  ptr->cnt = CSP_NULL;
 }
 
-static inline I_CSPRc csprc_clone(I_CSPRc *ptr) {
+CSP_NODISCARD static inline I_CSPRc csprc_clone(I_CSPRc *ptr) {
   if (ptr && ptr->cnt) {
     *ptr->cnt += 1;
   }
@@ -247,15 +258,15 @@ static inline I_CSPRc csprc_clone(I_CSPRc *ptr) {
   };
 }
 
-static inline I_CSPRc csprc_init(void *data) {
+CSP_NODISCARD static inline I_CSPRc csprc_init(void *data) {
   int *cnt = (int *)malloc(sizeof(int));
   if (!cnt) {
 #ifdef CSP_PANIC
     abort();
 #else
     return (I_CSPRc) {
-      .raw = NULL,
-      .cnt = NULL,
+      .raw = CSP_NULL,
+      .cnt = CSP_NULL,
     };
 #endif
   }
@@ -285,11 +296,11 @@ static inline void csparc_cleanup(I_CSPArc *ptr) {
       free(ptr->cnt);
   }
 
-  ptr->raw = NULL;
-  ptr->cnt = NULL;
+  ptr->raw = CSP_NULL;
+  ptr->cnt = CSP_NULL;
 }
 
-static inline I_CSPArc csparc_clone(I_CSPArc *ptr) {
+CSP_NODISCARD static inline I_CSPArc csparc_clone(I_CSPArc *ptr) {
   if (ptr && ptr->cnt) {
       atomic_fetch_add(ptr->cnt, 1);
   }
@@ -299,15 +310,15 @@ static inline I_CSPArc csparc_clone(I_CSPArc *ptr) {
   };
 }
 
-static inline I_CSPArc csparc_init(void *data) {
+CSP_NODISCARD static inline I_CSPArc csparc_init(void *data) {
   _Atomic int *cnt = (_Atomic int *)malloc(sizeof(_Atomic int));
   if (!cnt) {
 #ifdef CSP_PANIC
     abort();
 #else
     return (I_CSPArc) {
-      .raw = NULL,
-      .cnt = NULL,
+      .raw = CSP_NULL,
+      .cnt = CSP_NULL,
     };
 #endif
   }
@@ -333,17 +344,17 @@ static inline void cspcow_cleanup(I_CSPCow *ptr) {
     free(ptr->raw);
     free(ptr->cnt);
   }
-  ptr->raw = NULL;
-  ptr->cnt = NULL;
+  ptr->raw = CSP_NULL;
+  ptr->cnt = CSP_NULL;
 }
 
-static inline I_CSPCow cspcow_init(void *data, size_t size) {
+CSP_NODISCARD static inline I_CSPCow cspcow_init(void *data, size_t size) {
   int *cnt = (int *)malloc(sizeof(int));
   if (!cnt) {
 #ifdef CSP_PANIC
     abort();
 #else
-    return (I_CSPCow){ .raw = NULL, .size = 0, .cnt = NULL };
+    return (I_CSPCow){ .raw = CSP_NULL, .size = 0, .cnt = CSP_NULL };
 #endif
   }
   *cnt = 1;
@@ -354,28 +365,28 @@ static inline I_CSPCow cspcow_init(void *data, size_t size) {
   };
 }
 
-static inline I_CSPCow cspcow_clone(I_CSPCow *ptr) {
+CSP_NODISCARD static inline I_CSPCow cspcow_clone(I_CSPCow *ptr) {
   if (ptr && ptr->cnt) *ptr->cnt += 1;
   return (I_CSPCow){
-    .raw = ptr ? ptr->raw : NULL,
+    .raw = ptr ? ptr->raw : CSP_NULL,
     .size = ptr ? ptr->size : 0,
-    .cnt = ptr ? ptr->cnt : NULL,
+    .cnt = ptr ? ptr->cnt : CSP_NULL,
   };
 }
 
 static inline const void *cspcow_get(const I_CSPCow *ptr) {
-  return ptr && ptr->raw ? ptr->raw : NULL;
+  return ptr && ptr->raw ? ptr->raw : CSP_NULL;
 }
 
-static inline void *cspcow_get_mut(I_CSPCow *ptr) {
-  if (!ptr || !ptr->raw || !ptr->cnt) return NULL;
+CSP_NODISCARD static inline void *cspcow_get_mut(I_CSPCow *ptr) {
+  if (!ptr || !ptr->raw || !ptr->cnt) return CSP_NULL;
   if (*ptr->cnt > 1) {
     void *copy = malloc(ptr->size);
     if (!copy) {
 #ifdef CSP_PANIC
       abort();
 #else
-      return NULL;
+      return CSP_NULL;
 #endif
     }
     memcpy(copy, ptr->raw, ptr->size);
@@ -388,11 +399,11 @@ static inline void *cspcow_get_mut(I_CSPCow *ptr) {
     ptr->cnt = (int *)malloc(sizeof(int));
     if (!ptr->cnt) {
       free(copy);
-      ptr->raw = NULL;
+      ptr->raw = CSP_NULL;
 #ifdef CSP_PANIC
       abort();
 #endif
-      return NULL;
+      return CSP_NULL;
     }
     *ptr->cnt = 1;
   }
@@ -409,7 +420,7 @@ static inline void cspref_cleanup(CSPRefInner *ptr) {
     csparc_cleanup(&ptr->u.arc);
 }
 
-static inline CSPRefInner cspref_init(void *data, int atomic) {
+CSP_NODISCARD static inline CSPRefInner cspref_init(void *data, int atomic) {
   CSPRefInner r;
   if (atomic) {
     r.tag = CSP_REF_ARC;
@@ -421,11 +432,11 @@ static inline CSPRefInner cspref_init(void *data, int atomic) {
   return r;
 }
 
-static inline CSPRefInner cspref_clone(const CSPRefInner *ptr) {
+CSP_NODISCARD static inline CSPRefInner cspref_clone(const CSPRefInner *ptr) {
   CSPRefInner r;
   if (!ptr) {
     r.tag = CSP_REF_RC;
-    r.u.rc = (I_CSPRc){ .raw = NULL, .cnt = NULL };
+    r.u.rc = (I_CSPRc){ .raw = CSP_NULL, .cnt = CSP_NULL };
     return r;
   }
   r.tag = ptr->tag;
@@ -436,11 +447,11 @@ static inline CSPRefInner cspref_clone(const CSPRefInner *ptr) {
   return r;
 }
 
-static inline CSPWeak cspweak_init(CSPRefInner *ref) {
+CSP_NODISCARD static inline CSPWeak cspweak_init(CSPRefInner *ref) {
   CSPWeak w;
   if (!ref) {
     w.tag = CSP_REF_RC;
-    w.u.rc = (I_CSPWeakRc){ .rc = NULL };
+    w.u.rc = (I_CSPWeakRc){ .rc = CSP_NULL };
     return w;
   }
   w.tag = ref->tag;
@@ -451,18 +462,18 @@ static inline CSPWeak cspweak_init(CSPRefInner *ref) {
   return w;
 }
 
-static inline void *cspweak_try_get(const CSPWeak *ptr) {
-  if (!ptr) return NULL;
+CSP_NODISCARD static inline void *cspweak_try_get(const CSPWeak *ptr) {
+  if (!ptr) return CSP_NULL;
   if (ptr->tag == CSP_REF_RC)
     return cspweakrc_try_get((I_CSPWeakRc *)&ptr->u.rc);
   return cspweakarc_try_get((I_CSPWeakArc *)&ptr->u.arc);
 }
 
-static inline CSPWeak cspweak_clone(const CSPWeak *ptr) {
+CSP_NODISCARD static inline CSPWeak cspweak_clone(const CSPWeak *ptr) {
   CSPWeak w;
   if (!ptr) {
     w.tag = CSP_REF_RC;
-    w.u.rc = (I_CSPWeakRc){ .rc = NULL };
+    w.u.rc = (I_CSPWeakRc){ .rc = CSP_NULL };
     return w;
   }
   w.tag = ptr->tag;
