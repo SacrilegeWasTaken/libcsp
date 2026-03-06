@@ -1,17 +1,31 @@
 #pragma once
 
-#if defined(__clang__) && !defined(__cplusplus)
-
 #include <stdlib.h>
 #include <string.h>
-#include <stdatomic.h>
+
+/* Portable-ish cleanup macro:
+ * - enabled for Clang/GCC in C mode
+ * - a no-op for other compilers / in C++
+ */
+
+#if (defined(__clang__) || defined(__GNUC__))
+#  define CSP_CLEANUP(fn) __attribute__((cleanup(fn)))
+#else
+#  error "CSP is not supported on this compiler"
+#endif
+
+#if !defined(__STDC_NO_ATOMICS__)
+#  include <stdatomic.h>
+#else
+#  error "CSP requires C11 atomics (<stdatomic.h>)"
+#endif
 
 typedef struct {
   void *raw;
   size_t size;
 } I_CSPUnique;
 
-#define CSPUnique __attribute__((cleanup(cspunique_cleanup))) I_CSPUnique
+#define CSPUnique CSP_CLEANUP(cspunique_cleanup) I_CSPUnique
 static inline void cspunique_cleanup(I_CSPUnique *ptr);
 static inline I_CSPUnique cspunique_init(void *data, size_t size);
 static inline I_CSPUnique cspunique_clone(I_CSPUnique *ptr);
@@ -23,7 +37,7 @@ typedef struct {
 } I_CSPRc;
 
 
-#define CSPRc __attribute__((cleanup(csprc_cleanup))) I_CSPRc
+#define CSPRc CSP_CLEANUP(csprc_cleanup) I_CSPRc
 static inline void csprc_cleanup(I_CSPRc *ptr);
 static inline I_CSPRc csprc_clone(I_CSPRc *ptr);
 static inline I_CSPRc csprc_init(void *data);
@@ -32,13 +46,17 @@ static inline I_CSPRc csprc_init(void *data);
 
 typedef struct {
   void *raw;
-  atomic_int *cnt;
+  _Atomic int *cnt;
 } I_CSPArc;
 
-#define CSPArc __attribute__((cleanup(csparc_cleanup))) I_CSPArc
+#define CSPArc CSP_CLEANUP(csparc_cleanup) I_CSPArc
 static inline void csparc_cleanup(I_CSPArc *ptr);
 static inline I_CSPArc csparc_clone(I_CSPArc *ptr);
 static inline I_CSPArc csparc_init(void *data);
+
+
+
+
 
 
 
@@ -169,7 +187,7 @@ static inline I_CSPArc csparc_clone(I_CSPArc *ptr) {
 }
 
 static inline I_CSPArc csparc_init(void *data) {
-  atomic_int *cnt = (atomic_int *)malloc(sizeof(atomic_int));
+  _Atomic int *cnt = (_Atomic int *)malloc(sizeof(_Atomic int));
   if (!cnt) {
 #ifdef CSP_PANIC
     abort();
@@ -188,11 +206,5 @@ static inline I_CSPArc csparc_init(void *data) {
       .cnt = cnt,
   };
 }
-
-#endif
-
-#else
-
-#error "CSP is not supported on this compiler"
 
 #endif

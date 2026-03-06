@@ -1,8 +1,11 @@
 CompileFlags:
   Add:
-    - -std=c11  
-    - -Wall
-    - -Wextra
+    - -std=c11
+    - -xc
+    - -Iinclude
+  Remove: []
 
-    - -Wno-ignored-attributes
-    - -Wno-unknown-attributes
+Diagnostics:
+  Suppress:
+    - unknown-warning-option
+    - ignored-attributes
