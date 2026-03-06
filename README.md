@@ -133,6 +133,29 @@ Define before `#include "csp.h"` in the TU where `CSP_IMPLEMENTATION` is defined
 include/csp.h   – single header (types + implementation when CSP_IMPLEMENTATION)
 test/test.c     – tests (Unique, Rc, Arc, Cow, Ref/Weak, WeakRc/WeakArc, Arc MT)
 makefile        – test, run-test
+flake.nix       – Nix flake for using the library from Nix
+```
+
+### Using from Nix
+
+```bash
+# Build the library (copies include/ to $out/include)
+nix build
+
+# Dev shell with C_INCLUDE_PATH set
+nix develop
+
+# Run tests
+nix flake check
+```
+
+As a dependency in another flake:
+
+```nix
+inputs.libcps.url = "git+https://github.com/.../libcps";
+# ...
+buildInputs = [ inputs.libcps.packages.${system}.default ];
+# Compile with -I${libcps}/include
 ```
 
 ---
