@@ -3,3 +3,4 @@ test/test
 .DS_Store
 !test/test.c
 result/
+result
