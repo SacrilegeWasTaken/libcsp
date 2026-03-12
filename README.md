@@ -169,8 +169,4 @@ buildInputs = [ inputs.libcps.packages.${system}.default ];
 - **Cycles** – if A holds Rc/Arc to B and B holds Rc/Arc to A (or a longer ring), refcounts never reach zero and memory leaks. Use **Weak** for one of the links (e.g. back-pointers in a tree) to break the cycle; no automatic cycle detection.
 - **One implementation TU** – define `CSP_IMPLEMENTATION` in exactly one file.
 
----
 
-## License
-
-Use as you like (MIT/BSD-style); add your preferred license text.
