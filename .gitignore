@@ -5,3 +5,5 @@ test/test23
 !test/test.c
 result/
 result
+test/test_asan
+test/test_asan.dSYM

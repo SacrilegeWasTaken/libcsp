@@ -365,6 +365,13 @@ CSP_NODISCARD static inline I_CSPRc csprc_clone(I_CSPRc *ptr) {
 CSP_NODISCARD static inline I_CSPRc __csprc_init(void *data, CSPDtor dtor) {
   int *cnt = (int *)malloc(sizeof(int));
   if (!cnt) {
+    if (data) {
+      if (dtor) {
+        dtor(data);
+      } else {
+        free(data);
+      }
+    }
 #ifdef CSP_PANIC
     abort();
 #else
@@ -424,6 +431,13 @@ CSP_NODISCARD static inline I_CSPArc csparc_clone(I_CSPArc *ptr) {
 CSP_NODISCARD static inline I_CSPArc __csparc_init(void *data, CSPDtor dtor) {
   _Atomic int *cnt = (_Atomic int *)malloc(sizeof(_Atomic int));
   if (!cnt) {
+    if (data) {
+      if (dtor) {
+        dtor(data);
+      } else {
+        free(data);
+      }
+    }
 #ifdef CSP_PANIC
     abort();
 #else
@@ -468,6 +482,13 @@ static inline void cspcow_cleanup(I_CSPCow *ptr) {
 CSP_NODISCARD static inline I_CSPCow __cspcow_init(void *data, size_t size, CSPDtor dtor, CSPCloneFn clone_fn) {
   int *cnt = (int *)malloc(sizeof(int));
   if (!cnt) {
+    if (data) {
+      if (dtor) {
+        dtor(data);
+      } else {
+        free(data);
+      }
+    }
 #ifdef CSP_PANIC
     abort();
 #else
@@ -538,6 +559,7 @@ CSP_NODISCARD static inline void *cspcow_get_mut(I_CSPCow *ptr) {
         free(copy);
       }
       ptr->raw = CSP_NULL;
+      ptr->cnt = CSP_NULL;
 #ifdef CSP_PANIC
       abort();
 #endif
