@@ -14,7 +14,7 @@ brew install libcps
 **Nix**
 ```nix
 # Add libcps to your flake inputs
-inputs.libcps.url = "git+https://github.com/sacrilegewastaken/libcps";
+inputs.libcps.url = "git+https://codeberg.org/sacrilegewastaken/libcps";
 
 # Use it in your devShell or as a build input
 outputs = { self, nixpkgs, libcps }: {
