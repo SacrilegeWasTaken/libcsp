@@ -13,6 +13,46 @@
 #include "../include/csp.h"
 
 /* ----------------------------------------------------------------------------
+ * CUSTOM DESTRUCTOR TESTS SETUP
+ * ---------------------------------------------------------------------------- */
+
+typedef struct {
+  char *name;
+  int value;
+} NestedObj;
+
+static void nested_dtor(void *ptr) {
+  if (!ptr) return;
+  NestedObj *obj = (NestedObj *)ptr;
+  if (obj->name) {
+    free(obj->name);
+  }
+  free(obj);
+}
+
+static void *nested_clone(const void *ptr, size_t size) {
+  (void)size; // size is known
+  if (!ptr) return CSP_NULL;
+  const NestedObj *src = (const NestedObj *)ptr;
+  NestedObj *dst = (NestedObj *)malloc(sizeof(NestedObj));
+  if (!dst) return CSP_NULL;
+  if (src->name) {
+    dst->name = strdup(src->name);
+  } else {
+    dst->name = CSP_NULL;
+  }
+  dst->value = src->value;
+  return dst;
+}
+
+static NestedObj *make_nested(const char *name, int value) {
+  NestedObj *obj = (NestedObj *)malloc(sizeof(NestedObj));
+  obj->name = strdup(name);
+  obj->value = value;
+  return obj;
+}
+
+/* ----------------------------------------------------------------------------
  * CSPUnique
  * ---------------------------------------------------------------------------- */
 
@@ -75,6 +115,31 @@ static void test_unique_take(void) {
   assert(safe.size == 1024);
 }
 
+static void test_unique_custom_dtor(void) {
+  NestedObj *obj = make_nested("TestObj", 123);
+  CSPUnique u = csp_unique_from_dtor(obj, sizeof(NestedObj), nested_dtor, nested_clone);
+  assert(obj == CSP_NULL);
+  assert(u.raw != CSP_NULL);
+  assert(u.size == sizeof(NestedObj));
+  assert(u.dtor == nested_dtor);
+  assert(u.clone_fn == nested_clone);
+}
+
+static void test_unique_custom_clone(void) {
+  NestedObj *obj = make_nested("CloneMe", 456);
+  CSPUnique u = csp_unique_from_dtor(obj, sizeof(NestedObj), nested_dtor, nested_clone);
+  CSPUnique u2 = cspunique_clone(&u);
+  
+  assert(u2.raw != CSP_NULL);
+  assert(u2.raw != u.raw);
+  
+  NestedObj *dst = (NestedObj *)u2.raw;
+  NestedObj *src = (NestedObj *)u.raw;
+  assert(strcmp(dst->name, "CloneMe") == 0);
+  assert(dst->name != src->name); // deep copied string
+  assert(dst->value == 456);
+}
+
 /* ----------------------------------------------------------------------------
  * CSPRc
  * ---------------------------------------------------------------------------- */
@@ -113,6 +178,23 @@ static void test_rc_many_clones(void) {
   assert(*a.cnt == 1);
 }
 
+static void test_rc_custom_dtor(void) {
+  NestedObj *obj = make_nested("RcObj", 789);
+  CSPRc a = csp_rc_from_dtor(obj, nested_dtor);
+  assert(obj == CSP_NULL);
+  assert(a.raw != CSP_NULL);
+  assert(a.dtor == nested_dtor);
+  
+  {
+    CSPRc b = csprc_clone(&a);
+    assert(b.raw == a.raw);
+    assert(*a.cnt == 2);
+  }
+  
+  assert(*a.cnt == 1);
+  // Custom dtor will be called when 'a' goes out of scope and refcount hits 0
+}
+
 /* ----------------------------------------------------------------------------
  * CSPArc (single-thread + multithread)
  * ---------------------------------------------------------------------------- */
@@ -134,6 +216,22 @@ static void test_arc_basic_refcount(void) {
     assert(atomic_load(a.cnt) == 2);
   }
 
+  assert(atomic_load(a.cnt) == 1);
+}
+
+static void test_arc_custom_dtor(void) {
+  NestedObj *obj = make_nested("ArcObj", 999);
+  CSPArc a = csp_arc_from_dtor(obj, nested_dtor);
+  assert(obj == CSP_NULL);
+  assert(a.raw != CSP_NULL);
+  assert(a.dtor == nested_dtor);
+  
+  {
+    CSPArc b = csparc_clone(&a);
+    assert(b.raw == a.raw);
+    assert(atomic_load(a.cnt) == 2);
+  }
+  
   assert(atomic_load(a.cnt) == 1);
 }
 
@@ -259,6 +357,26 @@ static void test_cow_clone_chain(void) {
   assert(*c3.cnt == 2);
 }
 
+static void test_cow_custom_dtor_clone(void) {
+  NestedObj *obj = make_nested("CowObj", 111);
+  CSPCow c = csp_cow_from_dtor(obj, sizeof(NestedObj), nested_dtor, nested_clone);
+  
+  CSPCow c2 = cspcow_clone(&c);
+  assert(*c.cnt == 2);
+  assert(c2.raw == c.raw);
+  
+  // Clone on write
+  NestedObj *mut = (NestedObj *)cspcow_get_mut(&c2);
+  assert(mut != c.raw);
+  assert(mut->name != ((NestedObj *)c.raw)->name); // deep copied string
+  assert(strcmp(mut->name, "CowObj") == 0);
+  
+  mut->value = 222;
+  
+  assert(((NestedObj *)cspcow_get(&c))->value == 111);
+  assert(((NestedObj *)cspcow_get(&c2))->value == 222);
+}
+
 /* ----------------------------------------------------------------------------
  * CSPRef / CSPWeak (generic)
  * ---------------------------------------------------------------------------- */
@@ -303,6 +421,13 @@ static void test_weak_after_ref_drop(void) {
   (void)w;
 }
 
+static void test_ref_custom_dtor(void) {
+  NestedObj *obj = make_nested("RefObj", 333);
+  CSPRef r = csp_ref_from_dtor(obj, 0, nested_dtor);
+  assert(r.tag == CSP_REF_RC);
+  assert(r.u.rc.dtor == nested_dtor);
+}
+
 /* ----------------------------------------------------------------------------
  * Weak (Rc/Arc specific)
  * ---------------------------------------------------------------------------- */
@@ -337,21 +462,27 @@ int main(void) {
   test_unique_clone_null_empty();
   test_unique_chain_clones();
   test_unique_take();
+  test_unique_custom_dtor();
+  test_unique_custom_clone();
 
   test_rc_basic_refcount();
   test_rc_many_clones();
+  test_rc_custom_dtor();
 
   test_arc_basic_refcount();
   test_arc_multithreaded();
+  test_arc_custom_dtor();
 
   test_cow_basic();
   test_cow_get_mut_sole_owner();
   test_cow_get_null();
   test_cow_clone_chain();
+  test_cow_custom_dtor_clone();
 
   test_ref_generic_rc();
   test_ref_generic_arc();
   test_weak_after_ref_drop();
+  test_ref_custom_dtor();
 
   test_weakrc_basic();
   test_weakarc_basic();

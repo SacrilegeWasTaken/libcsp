@@ -28,22 +28,35 @@
 #  define CSP_NODISCARD
 #endif
 
+typedef void (*CSPDtor)(void *);
+typedef void *(*CSPCloneFn)(const void *, size_t);
+
 /* UNIQUE */
 typedef struct {
   void *raw;
   size_t size;
+  CSPDtor dtor;
+  CSPCloneFn clone_fn;
 } I_CSPUnique;
 
 #define CSPUnique CSP_CLEANUP(cspunique_cleanup) I_CSPUnique
 static inline void cspunique_cleanup(I_CSPUnique *ptr);
-CSP_NODISCARD static inline I_CSPUnique __cspunique_init(void *data, size_t size);
+CSP_NODISCARD static inline I_CSPUnique __cspunique_init(void *data, size_t size, CSPDtor dtor, CSPCloneFn clone_fn);
 
 #define csp_unique_from(ptr_var, size) \
     __cspunique_init(({ \
         void *__tmp_ptr = (ptr_var); \
         (ptr_var) = CSP_NULL; \
         __tmp_ptr; \
-    }), size)
+    }), size, CSP_NULL, CSP_NULL)
+
+#define csp_unique_from_dtor(ptr_var, size, dtor_fn, clone_fn_arg) \
+    __cspunique_init(({ \
+        void *__tmp_ptr = (ptr_var); \
+        (ptr_var) = CSP_NULL; \
+        __tmp_ptr; \
+    }), size, dtor_fn, clone_fn_arg)
+
 CSP_NODISCARD static inline I_CSPUnique cspunique_clone(I_CSPUnique *ptr);
 
 
@@ -51,38 +64,54 @@ CSP_NODISCARD static inline I_CSPUnique cspunique_clone(I_CSPUnique *ptr);
 typedef struct {
   void *raw;
   int *cnt;
+  CSPDtor dtor;
 } I_CSPRc;
 
 #define CSPRc CSP_CLEANUP(csprc_cleanup) I_CSPRc
 static inline void csprc_cleanup(I_CSPRc *ptr);
 CSP_NODISCARD static inline I_CSPRc csprc_clone(I_CSPRc *ptr);
-CSP_NODISCARD static inline I_CSPRc __csprc_init(void *data);
+CSP_NODISCARD static inline I_CSPRc __csprc_init(void *data, CSPDtor dtor);
 
 #define csp_rc_from(ptr_var) \
     __csprc_init(({ \
         void *__tmp_ptr = (ptr_var); \
         (ptr_var) = CSP_NULL; \
         __tmp_ptr; \
-    }))
+    }), CSP_NULL)
+
+#define csp_rc_from_dtor(ptr_var, dtor_fn) \
+    __csprc_init(({ \
+        void *__tmp_ptr = (ptr_var); \
+        (ptr_var) = CSP_NULL; \
+        __tmp_ptr; \
+    }), dtor_fn)
 
 
 /* ARC */
 typedef struct {
   void *raw;
   _Atomic int *cnt;
+  CSPDtor dtor;
 } I_CSPArc;
 
 #define CSPArc CSP_CLEANUP(csparc_cleanup) I_CSPArc
 static inline void csparc_cleanup(I_CSPArc *ptr);
 CSP_NODISCARD static inline I_CSPArc csparc_clone(I_CSPArc *ptr);
-CSP_NODISCARD static inline I_CSPArc __csparc_init(void *data);
+CSP_NODISCARD static inline I_CSPArc __csparc_init(void *data, CSPDtor dtor);
 
 #define csp_arc_from(ptr_var) \
     __csparc_init(({ \
         void *__tmp_ptr = (ptr_var); \
         (ptr_var) = CSP_NULL; \
         __tmp_ptr; \
-    }))
+    }), CSP_NULL)
+
+#define csp_arc_from_dtor(ptr_var, dtor_fn) \
+    __csparc_init(({ \
+        void *__tmp_ptr = (ptr_var); \
+        (ptr_var) = CSP_NULL; \
+        __tmp_ptr; \
+    }), dtor_fn)
 
 
 /* COW (copy-on-write): clone = share; first write = copy then write */
@@ -90,18 +119,28 @@ typedef struct {
   void *raw;
   size_t size;
   int *cnt;
+  CSPDtor dtor;
+  CSPCloneFn clone_fn;
 } I_CSPCow;
 
 #define CSPCow CSP_CLEANUP(cspcow_cleanup) I_CSPCow
 static inline void cspcow_cleanup(I_CSPCow *ptr);
-CSP_NODISCARD static inline I_CSPCow __cspcow_init(void *data, size_t size);
+CSP_NODISCARD static inline I_CSPCow __cspcow_init(void *data, size_t size, CSPDtor dtor, CSPCloneFn clone_fn);
 
 #define csp_cow_from(ptr_var, size) \
     __cspcow_init(({ \
         void *__tmp_ptr = (ptr_var); \
         (ptr_var) = CSP_NULL; \
         __tmp_ptr; \
-    }), size)
+    }), size, CSP_NULL, CSP_NULL)
+
+#define csp_cow_from_dtor(ptr_var, size, dtor_fn, clone_fn_arg) \
+    __cspcow_init(({ \
+        void *__tmp_ptr = (ptr_var); \
+        (ptr_var) = CSP_NULL; \
+        __tmp_ptr; \
+    }), size, dtor_fn, clone_fn_arg)
+
 CSP_NODISCARD static inline I_CSPCow cspcow_clone(I_CSPCow *ptr);
 static inline const void *cspcow_get(const I_CSPCow *ptr);
 CSP_NODISCARD static inline void *cspcow_get_mut(I_CSPCow *ptr);
@@ -141,14 +180,22 @@ typedef struct {
 #define CSPRef CSP_CLEANUP(cspref_cleanup) CSPRefInner
 
 static inline void cspref_cleanup(CSPRefInner *ptr);
-CSP_NODISCARD static inline CSPRefInner __cspref_init(void *data, int atomic);
+CSP_NODISCARD static inline CSPRefInner __cspref_init(void *data, int atomic, CSPDtor dtor);
 
 #define csp_ref_from(ptr_var, atomic) \
     __cspref_init(({ \
         void *__tmp_ptr = (ptr_var); \
         (ptr_var) = CSP_NULL; \
         __tmp_ptr; \
-    }), atomic)
+    }), atomic, CSP_NULL)
+
+#define csp_ref_from_dtor(ptr_var, atomic, dtor_fn) \
+    __cspref_init(({ \
+        void *__tmp_ptr = (ptr_var); \
+        (ptr_var) = CSP_NULL; \
+        __tmp_ptr; \
+    }), atomic, dtor_fn)
+
 CSP_NODISCARD static inline CSPRefInner cspref_clone(const CSPRefInner *ptr);
 
 typedef struct {
@@ -231,34 +278,51 @@ static inline void cspunique_cleanup(I_CSPUnique *ptr) {
 #ifdef CSP_DEBUG
     printf("CSPUnique cleanup: %p\n, raw: %p\n", ptr, ptr->raw);
 #endif
-    free(ptr->raw);
+    if (ptr->dtor) {
+      ptr->dtor(ptr->raw);
+    } else {
+      free(ptr->raw);
+    }
     ptr->raw = CSP_NULL;
   }
 }
 
-CSP_NODISCARD static inline I_CSPUnique __cspunique_init(void *data, size_t size) {
+CSP_NODISCARD static inline I_CSPUnique __cspunique_init(void *data, size_t size, CSPDtor dtor, CSPCloneFn clone_fn) {
   return (I_CSPUnique) {
-    .raw  = data,
-    .size = size,
+    .raw      = data,
+    .size     = size,
+    .dtor     = dtor,
+    .clone_fn = clone_fn,
   };
 }
 
 CSP_NODISCARD static inline I_CSPUnique cspunique_clone(I_CSPUnique *ptr) {
   if (!ptr || !ptr->raw || ptr->size == 0) {
-    return (I_CSPUnique){ .raw = CSP_NULL, .size = 0 };
+    return (I_CSPUnique){ .raw = CSP_NULL, .size = 0, .dtor = CSP_NULL, .clone_fn = CSP_NULL };
   }
-  void *copy = malloc(ptr->size);
+  
+  void *copy = CSP_NULL;
+  if (ptr->clone_fn) {
+    copy = ptr->clone_fn(ptr->raw, ptr->size);
+  } else {
+    copy = malloc(ptr->size);
+    if (copy) {
+      memcpy(copy, ptr->raw, ptr->size);
+    }
+  }
+
   if (!copy) {
 #ifdef CSP_PANIC
     abort();
 #else
-    return (I_CSPUnique){ .raw = CSP_NULL, .size = 0 };
+    return (I_CSPUnique){ .raw = CSP_NULL, .size = 0, .dtor = CSP_NULL, .clone_fn = CSP_NULL };
 #endif
   }
-  memcpy(copy, ptr->raw, ptr->size);
   return (I_CSPUnique) {
-    .raw  = copy,
-    .size = ptr->size,
+    .raw      = copy,
+    .size     = ptr->size,
+    .dtor     = ptr->dtor,
+    .clone_fn = ptr->clone_fn,
   };
 }
 
@@ -275,7 +339,11 @@ static inline void csprc_cleanup(I_CSPRc *ptr) {
 #ifdef CSP_DEBUG
     printf("CSPRc cleanup: %p\n, cnt: %d\n, raw: %p\n", ptr, *ptr->cnt, ptr->raw);
 #endif
-    free(ptr->raw);
+    if (ptr->dtor) {
+      ptr->dtor(ptr->raw);
+    } else {
+      free(ptr->raw);
+    }
     free(ptr->cnt);
   }
 
@@ -288,27 +356,30 @@ CSP_NODISCARD static inline I_CSPRc csprc_clone(I_CSPRc *ptr) {
     *ptr->cnt += 1;
   }
   return (I_CSPRc) {
-    .raw = ptr->raw,
-    .cnt = ptr->cnt,
+    .raw  = ptr->raw,
+    .cnt  = ptr->cnt,
+    .dtor = ptr->dtor,
   };
 }
 
-CSP_NODISCARD static inline I_CSPRc __csprc_init(void *data) {
+CSP_NODISCARD static inline I_CSPRc __csprc_init(void *data, CSPDtor dtor) {
   int *cnt = (int *)malloc(sizeof(int));
   if (!cnt) {
 #ifdef CSP_PANIC
     abort();
 #else
     return (I_CSPRc) {
-      .raw = CSP_NULL,
-      .cnt = CSP_NULL,
+      .raw  = CSP_NULL,
+      .cnt  = CSP_NULL,
+      .dtor = CSP_NULL,
     };
 #endif
   }
   *cnt = 1;
   return (I_CSPRc) {
-    .raw = data,
-    .cnt = cnt,
+    .raw  = data,
+    .cnt  = cnt,
+    .dtor = dtor,
   };
 }
 
@@ -326,7 +397,11 @@ static inline void csparc_cleanup(I_CSPArc *ptr) {
       printf("CSPArc cleanup: %p\n, cnt: %d\n, raw: %p\n", ptr, *ptr->cnt, ptr->raw);
 #endif
       if (ptr->raw) {
-          free(ptr->raw);
+          if (ptr->dtor) {
+              ptr->dtor(ptr->raw);
+          } else {
+              free(ptr->raw);
+          }
       }
       free(ptr->cnt);
   }
@@ -340,20 +415,22 @@ CSP_NODISCARD static inline I_CSPArc csparc_clone(I_CSPArc *ptr) {
       atomic_fetch_add(ptr->cnt, 1);
   }
   return (I_CSPArc) {
-      .raw = ptr->raw,
-      .cnt = ptr->cnt,
+      .raw  = ptr->raw,
+      .cnt  = ptr->cnt,
+      .dtor = ptr->dtor,
   };
 }
 
-CSP_NODISCARD static inline I_CSPArc __csparc_init(void *data) {
+CSP_NODISCARD static inline I_CSPArc __csparc_init(void *data, CSPDtor dtor) {
   _Atomic int *cnt = (_Atomic int *)malloc(sizeof(_Atomic int));
   if (!cnt) {
 #ifdef CSP_PANIC
     abort();
 #else
     return (I_CSPArc) {
-      .raw = CSP_NULL,
-      .cnt = CSP_NULL,
+      .raw  = CSP_NULL,
+      .cnt  = CSP_NULL,
+      .dtor = CSP_NULL,
     };
 #endif
   }
@@ -361,8 +438,9 @@ CSP_NODISCARD static inline I_CSPArc __csparc_init(void *data) {
   atomic_init(cnt, 1);
   
   return (I_CSPArc) {
-      .raw = data,
-      .cnt = cnt,
+      .raw  = data,
+      .cnt  = cnt,
+      .dtor = dtor,
   };
 }
 
@@ -376,36 +454,44 @@ static inline void cspcow_cleanup(I_CSPCow *ptr) {
 #ifdef CSP_DEBUG
     printf("CSPCow cleanup: %p, raw: %p\n", (void *)ptr, ptr->raw);
 #endif
-    free(ptr->raw);
+    if (ptr->dtor) {
+      ptr->dtor(ptr->raw);
+    } else {
+      free(ptr->raw);
+    }
     free(ptr->cnt);
   }
   ptr->raw = CSP_NULL;
   ptr->cnt = CSP_NULL;
 }
 
-CSP_NODISCARD static inline I_CSPCow __cspcow_init(void *data, size_t size) {
+CSP_NODISCARD static inline I_CSPCow __cspcow_init(void *data, size_t size, CSPDtor dtor, CSPCloneFn clone_fn) {
   int *cnt = (int *)malloc(sizeof(int));
   if (!cnt) {
 #ifdef CSP_PANIC
     abort();
 #else
-    return (I_CSPCow){ .raw = CSP_NULL, .size = 0, .cnt = CSP_NULL };
+    return (I_CSPCow){ .raw = CSP_NULL, .size = 0, .cnt = CSP_NULL, .dtor = CSP_NULL, .clone_fn = CSP_NULL };
 #endif
   }
   *cnt = 1;
   return (I_CSPCow){
-    .raw = data,
-    .size = size,
-    .cnt = cnt,
+    .raw      = data,
+    .size     = size,
+    .cnt      = cnt,
+    .dtor     = dtor,
+    .clone_fn = clone_fn,
   };
 }
 
 CSP_NODISCARD static inline I_CSPCow cspcow_clone(I_CSPCow *ptr) {
   if (ptr && ptr->cnt) *ptr->cnt += 1;
   return (I_CSPCow){
-    .raw = ptr ? ptr->raw : CSP_NULL,
-    .size = ptr ? ptr->size : 0,
-    .cnt = ptr ? ptr->cnt : CSP_NULL,
+    .raw      = ptr ? ptr->raw : CSP_NULL,
+    .size     = ptr ? ptr->size : 0,
+    .cnt      = ptr ? ptr->cnt : CSP_NULL,
+    .dtor     = ptr ? ptr->dtor : CSP_NULL,
+    .clone_fn = ptr ? ptr->clone_fn : CSP_NULL,
   };
 }
 
@@ -416,7 +502,16 @@ static inline const void *cspcow_get(const I_CSPCow *ptr) {
 CSP_NODISCARD static inline void *cspcow_get_mut(I_CSPCow *ptr) {
   if (!ptr || !ptr->raw || !ptr->cnt) return CSP_NULL;
   if (*ptr->cnt > 1) {
-    void *copy = malloc(ptr->size);
+    void *copy = CSP_NULL;
+    if (ptr->clone_fn) {
+      copy = ptr->clone_fn(ptr->raw, ptr->size);
+    } else {
+      copy = malloc(ptr->size);
+      if (copy) {
+        memcpy(copy, ptr->raw, ptr->size);
+      }
+    }
+
     if (!copy) {
 #ifdef CSP_PANIC
       abort();
@@ -424,16 +519,24 @@ CSP_NODISCARD static inline void *cspcow_get_mut(I_CSPCow *ptr) {
       return CSP_NULL;
 #endif
     }
-    memcpy(copy, ptr->raw, ptr->size);
+
     *ptr->cnt -= 1;
     if (*ptr->cnt == 0) {
-      free(ptr->raw);
+      if (ptr->dtor) {
+        ptr->dtor(ptr->raw);
+      } else {
+        free(ptr->raw);
+      }
       free(ptr->cnt);
     }
     ptr->raw = copy;
     ptr->cnt = (int *)malloc(sizeof(int));
     if (!ptr->cnt) {
-      free(copy);
+      if (ptr->dtor) {
+        ptr->dtor(copy);
+      } else {
+        free(copy);
+      }
       ptr->raw = CSP_NULL;
 #ifdef CSP_PANIC
       abort();
@@ -455,14 +558,14 @@ static inline void cspref_cleanup(CSPRefInner *ptr) {
     csparc_cleanup(&ptr->u.arc);
 }
 
-CSP_NODISCARD static inline CSPRefInner __cspref_init(void *data, int atomic) {
+CSP_NODISCARD static inline CSPRefInner __cspref_init(void *data, int atomic, CSPDtor dtor) {
   CSPRefInner r;
   if (atomic) {
     r.tag = CSP_REF_ARC;
-    r.u.arc = __csparc_init(data);
+    r.u.arc = __csparc_init(data, dtor);
   } else {
     r.tag = CSP_REF_RC;
-    r.u.rc = __csprc_init(data);
+    r.u.rc = __csprc_init(data, dtor);
   }
   return r;
 }
@@ -471,7 +574,7 @@ CSP_NODISCARD static inline CSPRefInner cspref_clone(const CSPRefInner *ptr) {
   CSPRefInner r;
   if (!ptr) {
     r.tag = CSP_REF_RC;
-    r.u.rc = (I_CSPRc){ .raw = CSP_NULL, .cnt = CSP_NULL };
+    r.u.rc = (I_CSPRc){ .raw = CSP_NULL, .cnt = CSP_NULL, .dtor = CSP_NULL };
     return r;
   }
   r.tag = ptr->tag;

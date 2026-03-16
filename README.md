@@ -126,6 +126,36 @@ I_CSPWeakArc wa = cspweakarc_init(&arc);
 void *q = cspweakarc_try_get(&wa);
 ```
 
+### Custom Destructors
+
+If your struct contains pointers to other allocations or handles (e.g. `FILE *`), you can provide a custom destructor. For types that can be deep-copied (Unique, Cow), you can also provide a custom clone function.
+
+```c
+// Example: struct with a nested string allocation
+static void my_dtor(void *ptr) {
+    MyStruct *s = (MyStruct *)ptr;
+    free(s->name);
+    free(s);
+}
+
+static void *my_clone(const void *ptr, size_t size) {
+    const MyStruct *src = (const MyStruct *)ptr;
+    MyStruct *dst = malloc(size);
+    dst->name = strdup(src->name);
+    return dst;
+}
+
+// ...
+MyStruct *s = malloc(sizeof(MyStruct));
+s->name = strdup("test");
+
+// Rc/Arc (no clone function needed, just dtor)
+CSPRc rc = csp_rc_from_dtor(s, my_dtor); 
+
+// Unique/Cow (dtor + clone function)
+CSPUnique u = csp_unique_from_dtor(s, sizeof(MyStruct), my_dtor, my_clone);
+```
+
 ---
 
 ## Build & test
@@ -172,8 +202,5 @@ flake.nix       – Nix flake for using the library from Nix
 ## Limitations
 
 - **Clang or GCC only** – uses `__attribute__((cleanup))`.
-- **No custom destructors** – only `malloc`/`free` semantics.
 - **Cycles** – if A holds Rc/Arc to B and B holds Rc/Arc to A (or a longer ring), refcounts never reach zero and memory leaks. Use **Weak** for one of the links (e.g. back-pointers in a tree) to break the cycle; no automatic cycle detection.
 - **One implementation TU** – define `CSP_IMPLEMENTATION` in exactly one file.
-
-
