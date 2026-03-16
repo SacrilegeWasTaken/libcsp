@@ -2,6 +2,29 @@
 
 Single-header C library that adds **RAII-style smart pointers** using the `cleanup` attribute (Clang/GCC). Requires **C11 or C23** and `<stdatomic.h>`. With C23, `CSP_NULL` is `nullptr`; with C11, it is `NULL`. `[[nodiscard]]`-style warnings use `warn_unused_result` on Clang/GCC for both standards.
 
+## Install
+**Homebrew**
+```sh
+# Tap is pointing to Codeberg (recommended)
+brew tap sacrilegewastaken/tap https://codeberg.org/sacrilegewastaken/tap.git 
+# Tap is pointing to GitHub
+brew tap SacrilegeWasTaken/tap
+brew install libcps
+```
+**Nix**
+```nix
+# Add libcps to your flake inputs
+inputs.libcps.url = "git+https://github.com/sacrilegewastaken/libcps";
+
+# Use it in your devShell or as a build input
+outputs = { self, nixpkgs, libcps }: {
+  devShells.${system}.default = nixpkgs.legacyPackages.${system}.mkShell {
+    buildInputs = [ libcps.packages.${system}.default ];
+    # Includes will be available at ${libcps}/include
+  };
+};
+```
+
 ## Types
 
 | Type | Description |
@@ -142,28 +165,6 @@ include/csp.h   – single header (types + implementation when CSP_IMPLEMENTATIO
 test/test.c     – tests (Unique, Rc, Arc, Cow, Ref/Weak, WeakRc/WeakArc, Arc MT)
 makefile        – test, run-test
 flake.nix       – Nix flake for using the library from Nix
-```
-
-### Using from Nix
-
-```bash
-# Build the library (copies include/ to $out/include)
-nix build
-
-# Dev shell with C_INCLUDE_PATH set
-nix develop
-
-# Run tests
-nix flake check
-```
-
-As a dependency in another flake:
-
-```nix
-inputs.libcps.url = "git+https://github.com/.../libcps";
-# ...
-buildInputs = [ inputs.libcps.packages.${system}.default ];
-# Compile with -I${libcps}/include
 ```
 
 ---
