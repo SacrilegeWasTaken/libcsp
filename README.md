@@ -21,6 +21,7 @@ All owning types use the `cleanup` attribute so destructors run when the variabl
 
 - **Compiler**: Clang or GCC, C11 or C23.
 - **Headers**: C11 atomics (`<stdatomic.h>`). The header defines `CSP_NULL` (nullptr in C23, NULL in C11) and `CSP_NODISCARD` for init/clone.
+- **Safe Initialization**: To prevent dangling pointers or double frees, the init macros (`csp_unique_from`, `csp_rc_from`, `csp_arc_from`, `csp_cow_from`, `csp_ref_from`) consume the source pointer by immediately setting it to `CSP_NULL`.
 
 ---
 
@@ -53,7 +54,8 @@ cc -std=c23 -Wall -Wextra -Iinclude -c your.c
 ### CSPUnique
 
 ```c
-CSPUnique u = cspunique_init(malloc(sizeof(int)), sizeof(int));
+void *p1 = malloc(sizeof(int));
+CSPUnique u = csp_unique_from(p1, sizeof(int)); // p1 is now CSP_NULL
 CSPUnique u2 = cspunique_clone(&u);   // deep copy
 // use u.raw, u2.raw; both freed on scope exit
 ```
@@ -61,18 +63,21 @@ CSPUnique u2 = cspunique_clone(&u);   // deep copy
 ### CSPRc / CSPArc
 
 ```c
-CSPRc a = csprc_init(malloc(sizeof(int)));
+void *p2 = malloc(sizeof(int));
+CSPRc a = csp_rc_from(p2);   // p2 is now CSP_NULL
 CSPRc b = csprc_clone(&a);   // same buffer, refcount 2
 // b cleaned up → refcount 1; a cleaned up → freed
 
-CSPArc arc = csparc_init(malloc(sizeof(int)));
+void *p3 = malloc(sizeof(int));
+CSPArc arc = csp_arc_from(p3); // p3 is now CSP_NULL
 // Safe to pass &arc to threads; each thread clones, uses, drops
 ```
 
 ### CSPCow (copy-on-write)
 
 ```c
-CSPCow c = cspcow_init(malloc(8), 8);
+void *p4 = malloc(8);
+CSPCow c = csp_cow_from(p4, 8); // p4 is now CSP_NULL
 CSPCow c2 = cspcow_clone(&c);           // no copy, shared
 const void *p = cspcow_get(&c);        // read
 void *m = cspcow_get_mut(&c);          // if refcount > 1, copies then returns; else returns raw
@@ -81,7 +86,8 @@ void *m = cspcow_get_mut(&c);          // if refcount > 1, copies then returns; 
 ### CSPRef / CSPWeak (generic)
 
 ```c
-CSPRef r = cspref_init(data, 0);       // 0 = Rc, 1 = Arc
+void *p5 = malloc(16);
+CSPRef r = csp_ref_from(p5, 0);       // 0 = Rc, 1 = Arc. p5 is now CSP_NULL
 CSPRef r2 = cspref_clone(&r);
 CSPWeak w = cspweak_init(&r);
 void *raw = cspweak_try_get(&w);
